@@ -12,7 +12,7 @@ Vagrant.configure("2") do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://vagrantcloud.com/search.
-  config.vm.box = "ubuntu/xenial64"
+  config.vm.box = "ubuntu/bionic64"
 
   # Forward ssh key requests to our local agent.
   config.ssh.forward_agent = true
@@ -52,13 +52,13 @@ Vagrant.configure("2") do |config|
   # backing providers for Vagrant. These expose provider-specific options.
   # Example for VirtualBox:
   #
-  # config.vm.provider "virtualbox" do |vb|
-  #   # Display the VirtualBox GUI when booting the machine
-  #   vb.gui = true
-  #
-  #   # Customize the amount of memory on the VM:
-  #   vb.memory = "1024"
-  # end
+  config.vm.provider "virtualbox" do |vb|
+    # Display the VirtualBox GUI when booting the machine
+    vb.gui = false
+
+    # Customize the amount of memory on the VM:
+    vb.memory = "16384"
+  end
   #
   # View the documentation for the provider you are using for more
   # information on available options.
@@ -67,61 +67,80 @@ Vagrant.configure("2") do |config|
   # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
   # documentation for more information about their specific syntax and use.
   config.vm.provision "shell", inline: <<-SHELL
-     apt-get update
-     apt-get install repo -y
-     apt-get install curl -y
-     apt-get install git -y
-     apt-get install wget -y
-     apt-get install polyml -y
-     apt-get install libpolyml-dev -y
-     apt-get install build-essential -y
-     apt-get install ninja-build -y
-     apt-get install python-six -y
-     apt-get install python-pip -y
-     pip install plyplus orderedset pyfdt sel4-deps
-     apt-get install python-enum -y
-     apt-get install python-pyelftools -y
-     apt-get install python-jinja2 -y
-     apt-get install python-dev -y
-     apt-get install libxml2-utils -y
-     (cd /tmp && \
-      wget https://cmake.org/files/v3.12/cmake-3.12.3.tar.gz && \
-      tar zxf cmake-*.tar.gz && \
-      cd cmake-* && \
-      ./bootstrap && \
-      make && \
-      make install)
-     (cd /tmp && \
-      curl -s https://api.github.com/repos/polyml/polyml/releases/latest \
-       | grep "tarball_url.*" \
-       | cut -d : -f 2,3 \
-       | tr -d $'\x22'$'\x2c' \
-       | wget -qi - -O tarball.tar.gz && \
-      tar zxf tarball.tar.gz && \
-      cd polyml-* && \
-      ./configure && \
-      make && \
-      make compiler && \
-      make install)
+    apt-get update
+    pkgs=(
+      repo
+      curl
+      git
+      wget
+      polyml
+      libpolyml-dev
+      build-essential
+      ninja-build
+      python-six
+      python-pip
+      python-enum34
+      python-pyelftools
+      python-jinja2
+      python-dev
+      python3-dev
+      python3-pip
+      libxml2-utils
+      ncurses-dev
+      emacs-nox
+      cmake
+      ccache
+      doxygen
+      gcc-arm-linux-gnueabi
+      g++-arm-linux-gnueabi
+      gcc-aarch64-linux-gnu
+      g++-aarch64-linux-gnu
+      qemu-system-arm
+      qemu-system-x86
+      clang
+      gdb
+      libssl-dev
+      libclang-dev
+      libcunit1-dev
+      libsqlite3-dev
+      libwww-perl
+      libxml2-dev
+      libxslt-dev
+      mlton
+      qemu-kvm
+      texlive-fonts-recommended
+      texlive-latex-extra
+      texlive-metapost
+      texlive-bibtex-extra)
+      for i in "${pkgs[@]}"
+      do
+        apt-get install $i -y
+      done
       update-locale LANG=en_US.UTF-8
+      curl -sSL https://get.haskellstack.org/ | sh
    SHELL
 
   config.vm.provision "shell", privileged: false, inline: <<-SHELL
-     ssh -T git@github.com -o StrictHostKeyChecking=no
-     mkdir repos
-     git clone git@github.com:HOL-Theorem-Prover/HOL.git repos/HOL
-     (cd repos/HOL && git checkout 5486751385fa6b1f69feee739547ec7e4ef99d7f)
-     git clone git@github.com:CakeML/cakeml.git repos/CakeML
-     (cd repos/CakeML && git checkout eade0f2f7ccfe17bb7042cdc67f8379ff7edd270)
-     mkdir tarballs
-     (cd tarballs && wget --quiet https://cakeml.org/cake-x64-64.tar.gz)
-     mkdir dev
-     (cd dev && tar -xvzf ../tarballs/cake-x64-64.tar.gz && cd cake-x64-64 && make)
-     mkdir repos/camkes-cakeml
-     (cd repos/camkes-cakeml && yes | repo init -u ssh://git@github.com/ikuz/camkes-cakeml.git && repo sync)
-     (cd repos/HOL && echo 'val polymllibdir = "/usr/lib/x86_64-linux-gnu";' > tools-poly/poly-includes.ML)
-     (cd repos/HOL && poly < tools/smart-configure.sml && bin/build)
-     export PATH=${PATH}:${PWD}/dev/cake-x64-64/:${PWD}/repos/HOL/bin:
-     export LC_ALL=en_US.UTF-8
+    ssh -T git@github.com -o StrictHostKeyChecking=no
+    pip install --user setuptools
+    pip install --user sel4-deps
+    pip install --user camkes-deps
+    ssh -T git@github.com -o StrictHostKeyChecking=no
+    mkdir repos
+    git clone git@github.com:HOL-Theorem-Prover/HOL.git repos/HOL
+    (cd repos/HOL && git checkout 5486751385fa6b1f69feee739547ec7e4ef99d7f)
+    git clone git@github.com:CakeML/cakeml.git repos/CakeML
+    (cd repos/CakeML && git checkout eade0f2f7ccfe17bb7042cdc67f8379ff7edd270)
+    mkdir tarballs
+    (cd tarballs && wget --quiet https://cakeml.org/cake-x64-64.tar.gz)
+    mkdir dev
+    (cd dev && tar -xvzf ../tarballs/cake-x64-64.tar.gz && cd cake-x64-64 && make)
+    mkdir repos/camkes-cakeml
+    (cd repos/camkes-cakeml && yes | repo init -u ssh://git@github.com/ikuz/camkes-cakeml.git && repo sync)
+    (cd repos/HOL && echo 'val polymllibdir = "/usr/lib/x86_64-linux-gnu";' > tools-poly/poly-includes.ML)
+    (cd repos/HOL && poly < tools/smart-configure.sml && bin/build)
+    echo '' >> ~/.bashrc
+    echo 'export PATH=${PATH}:${PWD}/dev/cake-x64-64/:${PWD}/repos/HOL/bin:' >> ~/.bashrc
+    echo 'export LC_ALL=en_US.UTF-8' >> ~/.bashrc
   SHELL
 end
