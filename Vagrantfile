@@ -1,3 +1,4 @@
+# coding: utf-8-emacs
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
@@ -20,7 +21,7 @@ Vagrant.configure("2") do |config|
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
   # `vagrant box outdated`. This is not recommended.
-  # config.vm.box_check_update = false
+  config.vm.box_check_update = true
 
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine. In the example below,
@@ -93,6 +94,8 @@ Vagrant.configure("2") do |config|
       doxygen
       gcc-arm-linux-gnueabi
       g++-arm-linux-gnueabi
+      gcc-arm-linux-gnueabihf
+      g++-arm-linux-gnueabihf
       gcc-aarch64-linux-gnu
       g++-aarch64-linux-gnu
       qemu-system-arm
@@ -118,29 +121,32 @@ Vagrant.configure("2") do |config|
       done
       update-locale LANG=en_US.UTF-8
       curl -sSL https://get.haskellstack.org/ | sh
+      echo “LANG=en_US.UTF-8” >> /etc/environment
+      echo “LANGUAGE=en_US.UTF-8” >> /etc/environment
+      echo “LC_ALL=en_US.UTF-8” >> /etc/environment
+      echo “LC_CTYPE=en_US.UTF-8” >> /etc/environment
    SHELL
 
   config.vm.provision "shell", privileged: false, inline: <<-SHELL
-    ssh -T git@github.com -o StrictHostKeyChecking=no
     pip install --user setuptools
     pip install --user sel4-deps
     pip install --user camkes-deps
-    ssh -T git@github.com -o StrictHostKeyChecking=no
     mkdir repos
-    git clone git@github.com:HOL-Theorem-Prover/HOL.git repos/HOL
-    (cd repos/HOL && git checkout 5486751385fa6b1f69feee739547ec7e4ef99d7f)
-    git clone git@github.com:CakeML/cakeml.git repos/CakeML
-    (cd repos/CakeML && git checkout eade0f2f7ccfe17bb7042cdc67f8379ff7edd270)
+    git clone https://github.com/HOL-Theorem-Prover/HOL.git repos/HOL
+    (cd repos/HOL && git checkout 7f7650b1f7d9fbc79f55646dabcf225b5cf0fff4)
+    git clone https://github.com/CakeML/cakeml.git repos/CakeML
+    (cd repos/CakeML && git checkout 59886cd0205c1d5d943ef10a26890f79b515b68f)
     mkdir tarballs
     (cd tarballs && wget --quiet https://cakeml.org/cake-x64-64.tar.gz)
+    (cd tarballs && wget --quiet https://cakeml.org/cake-x64-32.tar.gz)
     mkdir dev
     (cd dev && tar -xvzf ../tarballs/cake-x64-64.tar.gz && cd cake-x64-64 && make)
-    mkdir repos/camkes-cakeml
-    (cd repos/camkes-cakeml && yes | repo init -u ssh://git@github.com/ikuz/camkes-cakeml.git && repo sync)
+    (cd dev && tar -xvzf ../tarballs/cake-x64-32.tar.gz && cd cake-x64-32 && make)
+    mkdir repos/camkes
+    (cd repos/camkes && yes | repo init -u https://github.com/seL4/camkes-manifest.git && repo sync)
     (cd repos/HOL && echo 'val polymllibdir = "/usr/lib/x86_64-linux-gnu";' > tools-poly/poly-includes.ML)
     (cd repos/HOL && poly < tools/smart-configure.sml && bin/build)
     echo '' >> ~/.bashrc
     echo 'export PATH=${PATH}:${PWD}/dev/cake-x64-64/:${PWD}/repos/HOL/bin:' >> ~/.bashrc
-    echo 'export LC_ALL=en_US.UTF-8' >> ~/.bashrc
   SHELL
 end
